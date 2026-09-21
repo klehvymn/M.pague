@@ -1,1 +1,1309 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finanças Residenciais - Gestão de Contas a Pagar</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js for reports -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Custom Tailwind Configuration for Theme -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0284c7',
+                            600: '#0369a1',
+                            700: '#075985',
+                            800: '#075985',
+                            900: '#0c4a6e',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="h-full text-slate-800 flex flex-col md:flex-row overflow-x-hidden">
 
+    <!-- Sidebar / Mobile Header -->
+    <aside id="sidebar" class="w-full md:w-64 bg-slate-900 text-slate-300 flex-shrink-0 flex flex-col justify-between z-20">
+        <div>
+            <!-- Logo Header -->
+            <div class="p-5 flex items-center justify-between border-b border-slate-800">
+                <div class="flex items-center space-x-3">
+                    <div class="p-2 bg-brand-600 text-white rounded-xl shadow-lg shadow-brand-600/30">
+                        <i class="fa-solid fa-house-wallet text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-white text-lg leading-tight">FinResidência</h1>
+                        <span class="text-xs text-slate-400">Contas & Rendas</span>
+                    </div>
+                </div>
+                <!-- Mobile toggle -->
+                <button id="mobileMenuBtn" class="md:hidden text-slate-400 hover:text-white p-2" onclick="toggleMobileMenu()">
+                    <i class="fa-solid fa-bars text-xl"></i>
+                </button>
+            </div>
+
+            <!-- Navigation Links -->
+            <nav id="navMenu" class="hidden md:block p-4 space-y-1">
+                <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-item w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors bg-brand-600 text-white">
+                    <i class="fa-solid fa-chart-pie w-5"></i>
+                    <span>Dashboard</span>
+                </button>
+                <button onclick="switchTab('expenses')" id="nav-expenses" class="nav-item w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors hover:bg-slate-800 text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-file-invoice-dollar w-5"></i>
+                    <span>Contas a Pagar</span>
+                </button>
+                <button onclick="switchTab('incomes')" id="nav-incomes" class="nav-item w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors hover:bg-slate-800 text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-hand-holding-dollar w-5"></i>
+                    <span>Fontes de Renda</span>
+                </button>
+                <button onclick="switchTab('banks')" id="nav-banks" class="nav-item w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors hover:bg-slate-800 text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-building-columns w-5"></i>
+                    <span>Contas Bancárias</span>
+                </button>
+                <button onclick="switchTab('reports')" id="nav-reports" class="nav-item w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors hover:bg-slate-800 text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-chart-column w-5"></i>
+                    <span>Relatório Mensal</span>
+                </button>
+            </nav>
+        </div>
+
+        <!-- Sidebar Footer -->
+        <div class="hidden md:block p-4 border-t border-slate-800 text-xs text-slate-500 text-center">
+            <p>Sistema Residencial v1.0</p>
+            <button onclick="resetDemoData()" class="mt-2 text-slate-400 hover:text-slate-200 underline">
+                Restaurar Dados Demo
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 flex flex-col min-w-0 overflow-y-auto">
+        <!-- Top App Bar -->
+        <header class="bg-white border-b border-slate-200 px-6 py-4 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-10">
+            <div>
+                <h2 id="pageTitle" class="text-xl font-bold text-slate-800">Visão Geral</h2>
+                <p id="pageSubtitle" class="text-xs text-slate-500">Resumo financeiro e situação das contas</p>
+            </div>
+
+            <!-- Global Action & Filter -->
+            <div class="flex items-center space-x-3">
+                <div class="flex items-center bg-slate-100 p-1.5 rounded-lg border border-slate-200">
+                    <i class="fa-solid fa-calendar text-slate-400 ml-2 mr-2 text-sm"></i>
+                    <select id="globalMonthFilter" onchange="updateGlobalMonthFilter()" class="bg-transparent text-sm font-semibold text-slate-700 outline-none pr-2 cursor-pointer">
+                        <!-- Populated via JS -->
+                    </select>
+                </div>
+                <button onclick="openExpenseModal()" class="bg-brand-600 hover:bg-brand-700 text-white font-medium px-4 py-2 rounded-lg text-sm flex items-center space-x-2 shadow-sm transition">
+                    <i class="fa-solid fa-plus"></i>
+                    <span class="hidden sm:inline">Nova Conta</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Body Content Views -->
+        <div class="p-6 space-y-6 flex-1">
+
+            <!-- SECTION 1: DASHBOARD -->
+            <section id="view-dashboard" class="tab-view space-y-6">
+                <!-- Summary Metrics Grid -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <!-- Total Rendas -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Receita Total</span>
+                                <h3 id="dash-income" class="text-2xl font-bold text-slate-800 mt-1">R$ 0,00</h3>
+                            </div>
+                            <div class="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
+                                <i class="fa-solid fa-arrow-trend-up text-lg"></i>
+                            </div>
+                        </div>
+                        <span class="text-xs text-emerald-600 font-medium mt-3 flex items-center">
+                            <i class="fa-solid fa-circle-check mr-1 text-[10px]"></i> Fontes ativas no mês
+                        </span>
+                    </div>
+
+                    <!-- Total Despesas -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Despesas do Mês</span>
+                                <h3 id="dash-expense" class="text-2xl font-bold text-slate-800 mt-1">R$ 0,00</h3>
+                            </div>
+                            <div class="p-3 bg-rose-50 text-rose-600 rounded-xl">
+                                <i class="fa-solid fa-arrow-trend-down text-lg"></i>
+                            </div>
+                        </div>
+                        <span id="dash-expense-status" class="text-xs text-slate-500 font-medium mt-3">
+                            Inclui fixas e parceladas
+                        </span>
+                    </div>
+
+                    <!-- Saldo Líquido -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Saldo Líquido</span>
+                                <h3 id="dash-balance" class="text-2xl font-bold text-slate-800 mt-1">R$ 0,00</h3>
+                            </div>
+                            <div id="dash-balance-icon" class="p-3 bg-sky-50 text-sky-600 rounded-xl">
+                                <i class="fa-solid fa-scale-balanced text-lg"></i>
+                            </div>
+                        </div>
+                        <span id="dash-balance-sub" class="text-xs text-slate-500 font-medium mt-3">
+                            Renda - Despesas
+                        </span>
+                    </div>
+
+                    <!-- Contas Atrasadas -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Atrasadas / Pendentes</span>
+                                <h3 id="dash-overdue-count" class="text-2xl font-bold text-amber-600 mt-1">0</h3>
+                            </div>
+                            <div class="p-3 bg-amber-50 text-amber-600 rounded-xl">
+                                <i class="fa-solid fa-triangle-exclamation text-lg"></i>
+                            </div>
+                        </div>
+                        <span id="dash-overdue-val" class="text-xs text-amber-600 font-medium mt-3">
+                            R$ 0,00 a regularizar
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Alert Notice for Overdue Bills if any -->
+                <div id="overdueAlertBanner" class="hidden bg-rose-50 border border-rose-200 rounded-2xl p-4 text-rose-800 flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <i class="fa-solid fa-circle-exclamation text-2xl text-rose-600"></i>
+                        <div>
+                            <h4 class="font-semibold text-sm">Atenção: Você possui contas atrasadas!</h4>
+                            <p class="text-xs text-rose-600">Confira a lista abaixo ou filtre por contas atrasadas para efetuar o pagamento.</p>
+                        </div>
+                    </div>
+                    <button onclick="switchTab('expenses'); filterExpensesByStatus('overdue');" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg">
+                        Ver Atrasadas
+                    </button>
+                </div>
+
+                <!-- Recent Expenses Table Preview -->
+                <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+                    <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+                        <div>
+                            <h3 class="font-bold text-slate-800">Contas do Mês Selecionado</h3>
+                            <p class="text-xs text-slate-500">Acompanhamento do status de cada despesa</p>
+                        </div>
+                        <button onclick="switchTab('expenses')" class="text-xs font-semibold text-brand-600 hover:text-brand-700 flex items-center">
+                            Ver Todas <i class="fa-solid fa-chevron-right ml-1"></i>
+                        </button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm text-slate-600">
+                            <thead class="bg-slate-50 text-xs text-slate-400 font-semibold uppercase tracking-wider border-b border-slate-100">
+                                <tr>
+                                    <th class="py-3 px-5">Descrição</th>
+                                    <th class="py-3 px-5">Vencimento</th>
+                                    <th class="py-3 px-5">Categoria</th>
+                                    <th class="py-3 px-5">Valor</th>
+                                    <th class="py-3 px-5">Status</th>
+                                    <th class="py-3 px-5 text-right">Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dash-recent-expenses-body" class="divide-y divide-slate-100">
+                                <!-- Populated dynamically JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION 2: CONTAS A PAGAR -->
+            <section id="view-expenses" class="tab-view space-y-6 hidden">
+                <!-- Controls Bar -->
+                <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+                    <!-- Status Filter Tabs -->
+                    <div class="flex bg-slate-100 p-1 rounded-xl w-full md:w-auto overflow-x-auto">
+                        <button onclick="filterExpensesByStatus('all')" id="btn-filter-all" class="expense-filter-btn text-xs font-semibold px-4 py-2 rounded-lg bg-white text-slate-800 shadow-sm">
+                            Todas
+                        </button>
+                        <button onclick="filterExpensesByStatus('pending')" id="btn-filter-pending" class="expense-filter-btn text-xs font-semibold px-4 py-2 rounded-lg text-slate-500 hover:text-slate-800">
+                            A Pagar
+                        </button>
+                        <button onclick="filterExpensesByStatus('paid')" id="btn-filter-paid" class="expense-filter-btn text-xs font-semibold px-4 py-2 rounded-lg text-slate-500 hover:text-slate-800">
+                            Pagas
+                        </button>
+                        <button onclick="filterExpensesByStatus('overdue')" id="btn-filter-overdue" class="expense-filter-btn text-xs font-semibold px-4 py-2 rounded-lg text-slate-500 hover:text-slate-800">
+                            Atrasadas
+                        </button>
+                    </div>
+
+                    <!-- Search & Action -->
+                    <div class="flex items-center space-x-3 w-full md:w-auto">
+                        <div class="relative flex-1 md:w-64">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-sm"></i>
+                            <input type="text" id="expenseSearchInput" onkeyup="renderExpensesTable()" placeholder="Buscar conta..." class="w-full bg-slate-50 border border-slate-200 text-sm rounded-xl pl-9 pr-3 py-2 outline-none focus:border-brand-500">
+                        </div>
+                        <button onclick="openExpenseModal()" class="bg-brand-600 hover:bg-brand-700 text-white font-medium px-4 py-2 rounded-xl text-sm flex items-center space-x-2 shadow-sm transition whitespace-nowrap">
+                            <i class="fa-solid fa-plus"></i>
+                            <span>Nova Conta</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Expenses Table -->
+                <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm text-slate-600">
+                            <thead class="bg-slate-50 text-xs text-slate-400 font-semibold uppercase tracking-wider border-b border-slate-100">
+                                <tr>
+                                    <th class="py-3 px-5">Descrição / Parcelas</th>
+                                    <th class="py-3 px-5">Categoria</th>
+                                    <th class="py-3 px-5">Vencimento</th>
+                                    <th class="py-3 px-5">Conta Débito</th>
+                                    <th class="py-3 px-5">Valor</th>
+                                    <th class="py-3 px-5">Status</th>
+                                    <th class="py-3 px-5 text-right">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="expenses-table-body" class="divide-y divide-slate-100">
+                                <!-- Dynamic JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="expenses-empty-state" class="p-8 text-center hidden">
+                        <div class="w-12 h-12 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <i class="fa-solid fa-receipt text-xl"></i>
+                        </div>
+                        <p class="font-semibold text-slate-700 text-sm">Nenhuma conta encontrada</p>
+                        <p class="text-xs text-slate-400 mt-1">Tente mudar o filtro ou adicione uma nova conta.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION 3: FONTES DE RENDA -->
+            <section id="view-incomes" class="tab-view space-y-6 hidden">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h3 class="font-bold text-slate-800 text-lg">Fontes de Renda da Família</h3>
+                        <p class="text-xs text-slate-500">Cadastre integrantes da casa e seus respectivos salários ou serviços</p>
+                    </div>
+                    <button onclick="openIncomeModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-4 py-2 rounded-xl text-sm flex items-center space-x-2 shadow-sm transition">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>Adicionar Renda</span>
+                    </button>
+                </div>
+
+                <div id="incomes-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Dynamic Incomes Cards JS -->
+                </div>
+            </section>
+
+            <!-- SECTION 4: CONTAS BANCÁRIAS -->
+            <section id="view-banks" class="tab-view space-y-6 hidden">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h3 class="font-bold text-slate-800 text-lg">Contas Bancárias & Cartões</h3>
+                        <p class="text-xs text-slate-500">Gerencie onde seus fundos estão armazenados</p>
+                    </div>
+                    <button onclick="openBankModal()" class="bg-brand-600 hover:bg-brand-700 text-white font-medium px-4 py-2 rounded-xl text-sm flex items-center space-x-2 shadow-sm transition">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>Nova Conta Bancária</span>
+                    </button>
+                </div>
+
+                <!-- Bank Accounts Grid -->
+                <div id="banks-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Dynamic Banks Cards JS -->
+                </div>
+            </section>
+
+            <!-- SECTION 5: RELATÓRIOS -->
+            <section id="view-reports" class="tab-view space-y-6 hidden">
+                <!-- Report Metrics -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                        <span class="text-xs font-semibold text-slate-400 uppercase">Total Pago no Mês</span>
+                        <h4 id="report-total-paid" class="text-2xl font-bold text-emerald-600 mt-1">R$ 0,00</h4>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                        <span class="text-xs font-semibold text-slate-400 uppercase">Pendente / A Vencer</span>
+                        <h4 id="report-total-pending" class="text-2xl font-bold text-amber-600 mt-1">R$ 0,00</h4>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                        <span class="text-xs font-semibold text-slate-400 uppercase">Total Atrasado</span>
+                        <h4 id="report-total-overdue" class="text-2xl font-bold text-rose-600 mt-1">R$ 0,00</h4>
+                    </div>
+                </div>
+
+                <!-- Charts Section -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Expenses by Category Chart -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                        <h4 class="font-bold text-slate-800 text-base mb-4">Despesas por Categoria</h4>
+                        <div class="relative h-64 flex items-center justify-center">
+                            <canvas id="categoryChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Payment Status Ratio Chart -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                        <h4 class="font-bold text-slate-800 text-base mb-4">Proporção de Status de Pagamento</h4>
+                        <div class="relative h-64 flex items-center justify-center">
+                            <canvas id="statusChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- MODAL: ADD/EDIT EXPENSE -->
+    <div id="expenseModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-100 overflow-hidden transform transition-all">
+            <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 id="expenseModalTitle" class="font-bold text-slate-800">Cadastrar Nova Conta a Pagar</h3>
+                <button onclick="closeExpenseModal()" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <form id="expenseForm" onsubmit="handleSaveExpense(event)" class="p-5 space-y-4">
+                <input type="hidden" id="expense-id">
+                
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Descrição da Conta *</label>
+                    <input type="text" id="expense-description" required placeholder="Ex: Conta de Luz, Aluguel, Cartão" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-brand-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Valor Total / Parcela (R$) *</label>
+                        <input type="number" step="0.01" id="expense-amount" required placeholder="0.00" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-brand-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Vencimento *</label>
+                        <input type="date" id="expense-duedate" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-brand-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Categoria *</label>
+                        <select id="expense-category" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-brand-500">
+                            <option value="Moradia">Moradia / Aluguel</option>
+                            <option value="Alimentação">Alimentação / Mercado</option>
+                            <option value="Serviços">Serviços (Luz, Água, Net)</option>
+                            <option value="Transporte">Transporte / Combustível</option>
+                            <option value="Saúde">Saúde & Medicamentos</option>
+                            <option value="Educação">Educação / Cursos</option>
+                            <option value="Lazer">Lazer & Entretenimento</option>
+                            <option value="Outros">Outros</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Debitar de qual Conta?</label>
+                        <select id="expense-bank" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-brand-500">
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Parcelamento Option -->
+                <div id="installmentContainer" class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-semibold text-slate-700">Esta conta é parcelada / recorrente?</span>
+                        <input type="checkbox" id="expense-is-installment" onchange="toggleInstallmentInput()" class="rounded text-brand-600 focus:ring-brand-500 w-4 h-4 cursor-pointer">
+                    </div>
+                    <div id="installmentFields" class="hidden grid grid-cols-2 gap-3 pt-2 border-t border-slate-200">
+                        <div>
+                            <label class="block text-[11px] font-medium text-slate-500">Quantidade de Parcelas</label>
+                            <input type="number" id="expense-installments-count" min="2" max="60" value="2" class="w-full bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs outline-none">
+                        </div>
+                        <div class="text-[11px] text-slate-400 flex items-center pt-3">
+                            <i class="fa-solid fa-circle-info mr-1 text-slate-400"></i>
+                            Gera lançamentos automáticos nos próximos meses.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-2 flex justify-end space-x-2">
+                    <button type="button" onclick="closeExpenseModal()" class="px-4 py-2 rounded-xl text-slate-600 text-sm font-medium hover:bg-slate-100">Cancelar</button>
+                    <button type="submit" class="px-5 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold shadow-md">Salvar Conta</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: ADD/EDIT INCOME -->
+    <div id="incomeModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-100 overflow-hidden">
+            <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 class="font-bold text-slate-800">Cadastrar Fonte de Renda</h3>
+                <button onclick="closeIncomeModal()" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <form id="incomeForm" onsubmit="handleSaveIncome(event)" class="p-5 space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Pessoa / Integrante Residencial *</label>
+                    <input type="text" id="income-person" required placeholder="Ex: João, Maria, Família" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-brand-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Descrição do Serviço / Fonte *</label>
+                    <input type="text" id="income-source" required placeholder="Ex: Salário Empresa X, Freelance, Aluguel Recebido" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-brand-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Valor Mensal Estimado (R$) *</label>
+                    <input type="number" step="0.01" id="income-amount" required placeholder="0.00" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-brand-500">
+                </div>
+                <div class="pt-2 flex justify-end space-x-2">
+                    <button type="button" onclick="closeIncomeModal()" class="px-4 py-2 rounded-xl text-slate-600 text-sm font-medium hover:bg-slate-100">Cancelar</button>
+                    <button type="submit" class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold shadow-md">Salvar Renda</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: ADD BANK ACCOUNT -->
+    <div id="bankModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-100 overflow-hidden">
+            <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 class="font-bold text-slate-800">Nova Conta Bancária</h3>
+                <button onclick="closeBankModal()" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <form id="bankForm" onsubmit="handleSaveBank(event)" class="p-5 space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Nome do Banco / Instituição *</label>
+                    <input type="text" id="bank-name" required placeholder="Ex: Banco do Brasil, Nubank, Itaú" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-brand-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Tipo de Conta *</label>
+                    <select id="bank-type" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-brand-500">
+                        <option value="Conta Corrente">Conta Corrente</option>
+                        <option value="Conta Poupança">Conta Poupança</option>
+                        <option value="Carteira Digital">Carteira Digital / Fintech</option>
+                        <option value="Dinheiro Físico">Dinheiro Físico</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Saldo Inicial (R$) *</label>
+                    <input type="number" step="0.01" id="bank-balance" required placeholder="0.00" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-brand-500">
+                </div>
+                <div class="pt-2 flex justify-end space-x-2">
+                    <button type="button" onclick="closeBankModal()" class="px-4 py-2 rounded-xl text-slate-600 text-sm font-medium hover:bg-slate-100">Cancelar</button>
+                    <button type="submit" class="px-5 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold shadow-md">Salvar Conta</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // --- DATA STATE AND LOCALSTORAGE INTERACTION ---
+        const STORAGE_KEY_EXPENSES = 'fin_residencial_expenses_v1';
+        const STORAGE_KEY_INCOMES = 'fin_residencial_incomes_v1';
+        const STORAGE_KEY_BANKS = 'fin_residencial_banks_v1';
+
+        let expenses = [];
+        let incomes = [];
+        let banks = [];
+
+        let currentActiveTab = 'dashboard';
+        let currentStatusFilter = 'all';
+        let selectedYearMonth = ''; // YYYY-MM format
+
+        // Initializer
+        window.onload = function() {
+            initYearMonthFilterOptions();
+            loadStoredData();
+            updateAllViews();
+        };
+
+        // Populate Month Dropdown Options
+        function initYearMonthFilterOptions() {
+            const select = document.getElementById('globalMonthFilter');
+            select.innerHTML = '';
+
+            const today = new Date();
+            const currentYear = today.getFullYear();
+            const currentMonth = today.getMonth();
+
+            // Set current selected YYYY-MM
+            selectedYearMonth = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
+
+            // Generate options: 6 months past, current, 12 months future
+            const monthsNames = [
+                "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+                "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+            ];
+
+            for (let i = -6; i <= 12; i++) {
+                const date = new Date(currentYear, currentMonth + i, 1);
+                const y = date.getFullYear();
+                const m = date.getMonth();
+                const val = `${y}-${String(m + 1).padStart(2, '0')}`;
+                
+                const option = document.createElement('option');
+                option.value = val;
+                option.textContent = `${monthsNames[m]} / ${y}`;
+                if (val === selectedYearMonth) {
+                    option.selected = true;
+                }
+                select.appendChild(option);
+            }
+        }
+
+        function updateGlobalMonthFilter() {
+            selectedYearMonth = document.getElementById('globalMonthFilter').value;
+            updateAllViews();
+        }
+
+        // --- DEMO DATA SEEDING ---
+        function loadStoredData() {
+            const expData = localStorage.getItem(STORAGE_KEY_EXPENSES);
+            const incData = localStorage.getItem(STORAGE_KEY_INCOMES);
+            const bankData = localStorage.getItem(STORAGE_KEY_BANKS);
+
+            if (!expData || !incData || !bankData) {
+                seedDemoData();
+            } else {
+                expenses = JSON.parse(expData);
+                incomes = JSON.parse(incData);
+                banks = JSON.parse(bankData);
+            }
+        }
+
+        function seedDemoData() {
+            const today = new Date();
+            const y = today.getFullYear();
+            const m = String(today.getMonth() + 1).padStart(2, '0');
+
+            incomes = [
+                { id: '1', person: 'Carlos (Pai)', source: 'Salário Fixo - Empresa X', amount: 5500.00 },
+                { id: '2', person: 'Ana (Mãe)', source: 'Trabalho Autônomo / Consultoria', amount: 3200.00 }
+            ];
+
+            banks = [
+                { id: 'b1', name: 'Banco do Brasil', type: 'Conta Corrente', balance: 3450.00 },
+                { id: 'b2', name: 'Nubank', type: 'Carteira Digital', balance: 1820.50 },
+                { id: 'b3', name: 'Caixa Econômica', type: 'Conta Poupança', balance: 10000.00 }
+            ];
+
+            expenses = [
+                {
+                    id: 'e1',
+                    description: 'Aluguel do Imóvel',
+                    amount: 2200.00,
+                    dueDate: `${y}-${m}-10`,
+                    category: 'Moradia',
+                    bankId: 'b1',
+                    status: 'paid', // paid, pending
+                    installment: null
+                },
+                {
+                    id: 'e2',
+                    description: 'Conta de Luz (Energia)',
+                    amount: 340.50,
+                    dueDate: `${y}-${m}-15`,
+                    category: 'Serviços',
+                    bankId: 'b2',
+                    status: 'pending',
+                    installment: null
+                },
+                {
+                    id: 'e3',
+                    description: 'Supermercado Mensal',
+                    amount: 1450.00,
+                    dueDate: `${y}-${m}-05`,
+                    category: 'Alimentação',
+                    bankId: 'b1',
+                    status: 'paid',
+                    installment: null
+                },
+                {
+                    id: 'e4',
+                    description: 'Internet Fibra Óptica',
+                    amount: 120.00,
+                    dueDate: `${y}-${m}-20`,
+                    category: 'Serviços',
+                    bankId: 'b2',
+                    status: 'pending',
+                    installment: null
+                },
+                {
+                    id: 'e5',
+                    description: 'Sofá da Sala',
+                    amount: 250.00,
+                    dueDate: `${y}-${m}-25`,
+                    category: 'Moradia',
+                    bankId: 'b2',
+                    status: 'pending',
+                    installment: { current: 3, total: 10, groupId: 'g1' }
+                }
+            ];
+
+            saveAllToStorage();
+        }
+
+        function resetDemoData() {
+            if (confirm("Deseja redefinir os dados demonstrativos padrão?")) {
+                seedDemoData();
+                updateAllViews();
+            }
+        }
+
+        function saveAllToStorage() {
+            localStorage.setItem(STORAGE_KEY_EXPENSES, JSON.stringify(expenses));
+            localStorage.setItem(STORAGE_KEY_INCOMES, JSON.stringify(incomes));
+            localStorage.setItem(STORAGE_KEY_BANKS, JSON.stringify(banks));
+        }
+
+        // --- NAVIGATION TABS ---
+        function switchTab(tabId) {
+            currentActiveTab = tabId;
+
+            // Hide all tab views
+            document.querySelectorAll('.tab-view').forEach(el => el.classList.add('hidden'));
+            
+            // Show selected view
+            const selectedView = document.getElementById(`view-${tabId}`);
+            if (selectedView) selectedView.classList.remove('hidden');
+
+            // Style nav buttons
+            document.querySelectorAll('.nav-item').forEach(btn => {
+                btn.classList.remove('bg-brand-600', 'text-white');
+                btn.classList.add('text-slate-400', 'hover:bg-slate-800', 'hover:text-white');
+            });
+            const activeNav = document.getElementById(`nav-${tabId}`);
+            if (activeNav) {
+                activeNav.classList.remove('text-slate-400', 'hover:bg-slate-800');
+                activeNav.classList.add('bg-brand-600', 'text-white');
+            }
+
+            // Update Header Titles
+            const titleMap = {
+                'dashboard': 'Visão Geral',
+                'expenses': 'Contas a Pagar',
+                'incomes': 'Fontes de Renda',
+                'banks': 'Contas Bancárias',
+                'reports': 'Relatório Mensal'
+            };
+            const subtitleMap = {
+                'dashboard': 'Resumo financeiro e situação das contas no mês',
+                'expenses': 'Gerenciamento detalhado e status das despesas',
+                'incomes': 'Cadastre e acompanhe os ganhos da residência',
+                'banks': 'Saldos acumulados e locais de depósito',
+                'reports': 'Análise visual de gastos por categoria e pagamento'
+            };
+
+            document.getElementById('pageTitle').innerText = titleMap[tabId] || 'Finanças';
+            document.getElementById('pageSubtitle').innerText = subtitleMap[tabId] || '';
+
+            // Refresh content view
+            updateAllViews();
+
+            // Mobile menu close on click
+            document.getElementById('navMenu').classList.add('hidden');
+        }
+
+        function toggleMobileMenu() {
+            const nav = document.getElementById('navMenu');
+            nav.classList.toggle('hidden');
+        }
+
+        // --- HELPER FUNCTIONS ---
+        function formatMoney(val) {
+            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0);
+        }
+
+        function parseDate(dateStr) {
+            if (!dateStr) return new Date();
+            const [y, m, d] = dateStr.split('-');
+            return new Date(y, m - 1, d);
+        }
+
+        function formatDateBR(dateStr) {
+            if (!dateStr) return '';
+            const [y, m, d] = dateStr.split('-');
+            return `${d}/${m}/${y}`;
+        }
+
+        // Determine if expense is overdue
+        function getComputedExpenseStatus(expense) {
+            if (expense.status === 'paid') return 'paid';
+            
+            const today = new Date();
+            today.setHours(0,0,0,0);
+            
+            const expDate = parseDate(expense.dueDate);
+            expDate.setHours(0,0,0,0);
+
+            if (expDate < today) {
+                return 'overdue';
+            }
+            return 'pending';
+        }
+
+        // Get expenses filtered by currently selected YYYY-MM
+        function getExpensesForSelectedMonth() {
+            return expenses.filter(exp => {
+                if (!exp.dueDate) return false;
+                return exp.dueDate.startsWith(selectedYearMonth);
+            });
+        }
+
+        // --- UPDATE ALL VIEWS ---
+        function updateAllViews() {
+            renderDashboard();
+            renderExpensesTable();
+            renderIncomesGrid();
+            renderBanksGrid();
+            renderReports();
+            populateBankSelectOptions();
+        }
+
+        // --- DASHBOARD RENDERING ---
+        function renderDashboard() {
+            const monthExpenses = getExpensesForSelectedMonth();
+
+            // Compute totals for month
+            const totalIncome = incomes.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
+            const totalExpense = monthExpenses.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
+            const netBalance = totalIncome - totalExpense;
+
+            // Compute Overdue across ALL expenses (not just this month for safety alerts)
+            const today = new Date();
+            today.setHours(0,0,0,0);
+
+            const overdueExpenses = expenses.filter(exp => getComputedExpenseStatus(exp) === 'overdue');
+            const overdueAmount = overdueExpenses.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
+
+            // Update Cards
+            document.getElementById('dash-income').innerText = formatMoney(totalIncome);
+            document.getElementById('dash-expense').innerText = formatMoney(totalExpense);
+            document.getElementById('dash-balance').innerText = formatMoney(netBalance);
+
+            const balanceSub = document.getElementById('dash-balance-sub');
+            if (netBalance >= 0) {
+                balanceSub.className = "text-xs text-emerald-600 font-medium mt-3 flex items-center";
+                balanceSub.innerHTML = '<i class="fa-solid fa-circle-check mr-1"></i> Orçamento Positivo';
+            } else {
+                balanceSub.className = "text-xs text-rose-600 font-medium mt-3 flex items-center";
+                balanceSub.innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-1"></i> Atenção: Déficit no mês';
+            }
+
+            document.getElementById('dash-overdue-count').innerText = overdueExpenses.length;
+            document.getElementById('dash-overdue-val').innerText = `${formatMoney(overdueAmount)} a regularizar`;
+
+            // Overdue Alert Banner Toggle
+            const banner = document.getElementById('overdueAlertBanner');
+            if (overdueExpenses.length > 0) {
+                banner.classList.remove('hidden');
+            } else {
+                banner.classList.add('hidden');
+            }
+
+            // Recent Expenses Preview (Limit 5)
+            const tbody = document.getElementById('dash-recent-expenses-body');
+            tbody.innerHTML = '';
+
+            if (monthExpenses.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-xs text-slate-400">Nenhuma conta cadastrada para este mês.</td></tr>`;
+                return;
+            }
+
+            monthExpenses.slice(0, 5).forEach(exp => {
+                const computedStatus = getComputedExpenseStatus(exp);
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition-colors';
+
+                tr.innerHTML = `
+                    <td class="py-3 px-5 font-semibold text-slate-800">
+                        ${exp.description}
+                        ${exp.installment ? `<span class="ml-1 text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full">(${exp.installment.current}/${exp.installment.total})</span>` : ''}
+                    </td>
+                    <td class="py-3 px-5 text-xs text-slate-500">${formatDateBR(exp.dueDate)}</td>
+                    <td class="py-3 px-5"><span class="px-2 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-medium">${exp.category}</span></td>
+                    <td class="py-3 px-5 font-medium text-slate-800">${formatMoney(exp.amount)}</td>
+                    <td class="py-3 px-5">${getStatusBadgeHTML(computedStatus)}</td>
+                    <td class="py-3 px-5 text-right">
+                        ${computedStatus === 'paid' ? 
+                            `<button onclick="togglePayStatus('${exp.id}')" title="Marcar como Pendente" class="text-xs text-slate-400 hover:text-slate-600 font-medium"><i class="fa-solid fa-rotate-left mr-1"></i>Desfazer</button>` : 
+                            `<button onclick="togglePayStatus('${exp.id}')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-1 rounded-lg font-medium shadow-sm transition">Pagar</button>`
+                        }
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function getStatusBadgeHTML(status) {
+            if (status === 'paid') {
+                return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
+                            <i class="fa-solid fa-check text-[10px] mr-1"></i> Pago
+                        </span>`;
+            } else if (status === 'overdue') {
+                return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-800">
+                            <i class="fa-solid fa-clock text-[10px] mr-1"></i> Atrasada
+                        </span>`;
+            } else {
+                return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">
+                            <i class="fa-solid fa-hourglass-half text-[10px] mr-1"></i> Pendente
+                        </span>`;
+            }
+        }
+
+        // --- EXPENSES VIEW TABLE ---
+        function filterExpensesByStatus(status) {
+            currentStatusFilter = status;
+            
+            // Highlight button
+            document.querySelectorAll('.expense-filter-btn').forEach(btn => {
+                btn.className = 'expense-filter-btn text-xs font-semibold px-4 py-2 rounded-lg text-slate-500 hover:text-slate-800';
+            });
+            const activeBtn = document.getElementById(`btn-filter-${status}`);
+            if (activeBtn) {
+                activeBtn.className = 'expense-filter-btn text-xs font-semibold px-4 py-2 rounded-lg bg-white text-slate-800 shadow-sm';
+            }
+
+            renderExpensesTable();
+        }
+
+        function renderExpensesTable() {
+            const tbody = document.getElementById('expenses-table-body');
+            const emptyState = document.getElementById('expenses-empty-state');
+            const searchQuery = (document.getElementById('expenseSearchInput').value || '').toLowerCase();
+
+            tbody.innerHTML = '';
+
+            let filtered = getExpensesForSelectedMonth();
+
+            // Filter status
+            if (currentStatusFilter !== 'all') {
+                filtered = filtered.filter(exp => getComputedExpenseStatus(exp) === currentStatusFilter);
+            }
+
+            // Search query
+            if (searchQuery) {
+                filtered = filtered.filter(exp => 
+                    exp.description.toLowerCase().includes(searchQuery) ||
+                    exp.category.toLowerCase().includes(searchQuery)
+                );
+            }
+
+            if (filtered.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            filtered.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+
+            filtered.forEach(exp => {
+                const computedStatus = getComputedExpenseStatus(exp);
+                const bank = banks.find(b => b.id === exp.bankId);
+                const bankName = bank ? bank.name : 'Nenhuma';
+
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition-colors';
+
+                tr.innerHTML = `
+                    <td class="py-3 px-5 font-semibold text-slate-800">
+                        ${exp.description}
+                        ${exp.installment ? `<span class="ml-1 text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">Parcela ${exp.installment.current}/${exp.installment.total}</span>` : ''}
+                    </td>
+                    <td class="py-3 px-5"><span class="px-2 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-medium">${exp.category}</span></td>
+                    <td class="py-3 px-5 text-xs text-slate-600 font-medium">${formatDateBR(exp.dueDate)}</td>
+                    <td class="py-3 px-5 text-xs text-slate-500"><i class="fa-solid fa-building-columns mr-1 text-slate-400"></i>${bankName}</td>
+                    <td class="py-3 px-5 font-bold text-slate-800">${formatMoney(exp.amount)}</td>
+                    <td class="py-3 px-5">${getStatusBadgeHTML(computedStatus)}</td>
+                    <td class="py-3 px-5 text-right space-x-2">
+                        ${computedStatus === 'paid' ? 
+                            `<button onclick="togglePayStatus('${exp.id}')" title="Marcar como não pago" class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg border border-slate-200"><i class="fa-solid fa-rotate-left"></i></button>` : 
+                            `<button onclick="togglePayStatus('${exp.id}')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-1.5 rounded-lg font-medium shadow-sm transition"><i class="fa-solid fa-check mr-1"></i> Pagar</button>`
+                        }
+                        <button onclick="deleteExpense('${exp.id}')" title="Excluir" class="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition"><i class="fa-solid fa-trash-can"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function togglePayStatus(id) {
+            const exp = expenses.find(e => e.id === id);
+            if (exp) {
+                exp.status = exp.status === 'paid' ? 'pending' : 'paid';
+                saveAllToStorage();
+                updateAllViews();
+            }
+        }
+
+        function deleteExpense(id) {
+            if (confirm("Tem certeza de que deseja excluir esta conta?")) {
+                expenses = expenses.filter(e => e.id !== id);
+                saveAllToStorage();
+                updateAllViews();
+            }
+        }
+
+        // --- EXPENSE FORM & MODAL ---
+        function openExpenseModal() {
+            document.getElementById('expenseForm').reset();
+            document.getElementById('expense-id').value = '';
+            document.getElementById('installmentFields').classList.add('hidden');
+            
+            // Default date: today or current month 10th
+            const todayStr = new Date().toISOString().split('T')[0];
+            document.getElementById('expense-duedate').value = todayStr;
+
+            document.getElementById('expenseModal').classList.remove('hidden');
+        }
+
+        function closeExpenseModal() {
+            document.getElementById('expenseModal').classList.add('hidden');
+        }
+
+        function toggleInstallmentInput() {
+            const isChecked = document.getElementById('expense-is-installment').checked;
+            const fields = document.getElementById('installmentFields');
+            if (isChecked) {
+                fields.classList.remove('hidden');
+            } else {
+                fields.classList.add('hidden');
+            }
+        }
+
+        function handleSaveExpense(event) {
+            event.preventDefault();
+
+            const description = document.getElementById('expense-description').value;
+            const amount = parseFloat(document.getElementById('expense-amount').value) || 0;
+            const dueDate = document.getElementById('expense-duedate').value;
+            const category = document.getElementById('expense-category').value;
+            const bankId = document.getElementById('expense-bank').value;
+            const isInstallment = document.getElementById('expense-is-installment').checked;
+
+            if (isInstallment) {
+                const count = parseInt(document.getElementById('expense-installments-count').value) || 2;
+                const groupId = 'group_' + Date.now();
+                const baseDate = parseDate(dueDate);
+
+                for (let i = 0; i < count; i++) {
+                    const instDate = new Date(baseDate.getFullYear(), baseDate.getMonth() + i, baseDate.getDate());
+                    const y = instDate.getFullYear();
+                    const m = String(instDate.getMonth() + 1).padStart(2, '0');
+                    const d = String(instDate.getDate()).padStart(2, '0');
+
+                    expenses.push({
+                        id: 'exp_' + Date.now() + '_' + i,
+                        description: description,
+                        amount: amount,
+                        dueDate: `${y}-${m}-${d}`,
+                        category: category,
+                        bankId: bankId,
+                        status: 'pending',
+                        installment: {
+                            current: i + 1,
+                            total: count,
+                            groupId: groupId
+                        }
+                    });
+                }
+            } else {
+                expenses.push({
+                    id: 'exp_' + Date.now(),
+                    description: description,
+                    amount: amount,
+                    dueDate: dueDate,
+                    category: category,
+                    bankId: bankId,
+                    status: 'pending',
+                    installment: null
+                });
+            }
+
+            saveAllToStorage();
+            closeExpenseModal();
+            updateAllViews();
+        }
+
+        // --- INCOMES MANAGEMENT ---
+        function renderIncomesGrid() {
+            const grid = document.getElementById('incomes-grid');
+            grid.innerHTML = '';
+
+            if (incomes.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full p-8 text-center bg-white rounded-2xl border border-slate-200/80">
+                        <p class="text-slate-500 text-sm">Nenhuma fonte de renda cadastrada.</p>
+                    </div>`;
+                return;
+            }
+
+            incomes.forEach(inc => {
+                const card = document.createElement('div');
+                card.className = 'bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between hover:shadow-md transition';
+                card.innerHTML = `
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-semibold px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-lg">
+                                <i class="fa-solid fa-user mr-1 text-[10px]"></i> ${inc.person}
+                            </span>
+                            <button onclick="deleteIncome('${inc.id}')" class="text-slate-300 hover:text-rose-600 transition text-sm">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                        <h4 class="font-bold text-slate-800 text-base mb-1">${inc.source}</h4>
+                        <p class="text-2xl font-extrabold text-emerald-600 mt-2">${formatMoney(inc.amount)}</p>
+                    </div>
+                    <div class="pt-4 mt-3 border-t border-slate-100 text-xs text-slate-400">
+                        Recebimento Mensal Estimado
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function openIncomeModal() {
+            document.getElementById('incomeForm').reset();
+            document.getElementById('incomeModal').classList.remove('hidden');
+        }
+
+        function closeIncomeModal() {
+            document.getElementById('incomeModal').classList.add('hidden');
+        }
+
+        function handleSaveIncome(event) {
+            event.preventDefault();
+            const person = document.getElementById('income-person').value;
+            const source = document.getElementById('income-source').value;
+            const amount = parseFloat(document.getElementById('income-amount').value) || 0;
+
+            incomes.push({
+                id: 'inc_' + Date.now(),
+                person: person,
+                source: source,
+                amount: amount
+            });
+
+            saveAllToStorage();
+            closeIncomeModal();
+            updateAllViews();
+        }
+
+        function deleteIncome(id) {
+            if (confirm("Excluir esta fonte de renda?")) {
+                incomes = incomes.filter(i => i.id !== id);
+                saveAllToStorage();
+                updateAllViews();
+            }
+        }
+
+        // --- BANK ACCOUNTS MANAGEMENT ---
+        function renderBanksGrid() {
+            const grid = document.getElementById('banks-grid');
+            grid.innerHTML = '';
+
+            const totalBankBalances = banks.reduce((acc, curr) => acc + (parseFloat(curr.balance) || 0), 0);
+
+            // Total Summary Card first
+            const summaryCard = document.createElement('div');
+            summaryCard.className = 'bg-gradient-to-br from-brand-700 to-slate-900 text-white p-5 rounded-2xl shadow-lg flex flex-col justify-between';
+            summaryCard.innerHTML = `
+                <div>
+                    <span class="text-xs uppercase tracking-wider text-brand-200 font-semibold">Saldo Total Consolidado</span>
+                    <h3 class="text-3xl font-extrabold mt-1 text-white">${formatMoney(totalBankBalances)}</h3>
+                </div>
+                <div class="pt-4 text-xs text-brand-200 flex items-center justify-between border-t border-brand-600/50 mt-4">
+                    <span>${banks.length} contas cadastradas</span>
+                    <i class="fa-solid fa-vault text-lg"></i>
+                </div>
+            `;
+            grid.appendChild(summaryCard);
+
+            banks.forEach(b => {
+                const card = document.createElement('div');
+                card.className = 'bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between hover:shadow-md transition';
+                card.innerHTML = `
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-semibold px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg">
+                                ${b.type}
+                            </span>
+                            <button onclick="deleteBank('${b.id}')" class="text-slate-300 hover:text-rose-600 transition text-sm">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                        <h4 class="font-bold text-slate-800 text-base mb-1">${b.name}</h4>
+                        <p class="text-2xl font-bold text-slate-800 mt-2">${formatMoney(b.balance)}</p>
+                    </div>
+                    <div class="pt-3 mt-3 border-t border-slate-100 flex justify-between items-center text-xs text-slate-400">
+                        <span>Saldo em conta</span>
+                        <i class="fa-solid fa-building-columns text-slate-300"></i>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function populateBankSelectOptions() {
+            const select = document.getElementById('expense-bank');
+            select.innerHTML = '<option value="">Nenhuma / Dinheiro</option>';
+            banks.forEach(b => {
+                const opt = document.createElement('option');
+                opt.value = b.id;
+                opt.textContent = `${b.name} (${b.type})`;
+                select.appendChild(opt);
+            });
+        }
+
+        function openBankModal() {
+            document.getElementById('bankForm').reset();
+            document.getElementById('bankModal').classList.remove('hidden');
+        }
+
+        function closeBankModal() {
+            document.getElementById('bankModal').classList.add('hidden');
+        }
+
+        function handleSaveBank(event) {
+            event.preventDefault();
+            const name = document.getElementById('bank-name').value;
+            const type = document.getElementById('bank-type').value;
+            const balance = parseFloat(document.getElementById('bank-balance').value) || 0;
+
+            banks.push({
+                id: 'b_' + Date.now(),
+                name: name,
+                type: type,
+                balance: balance
+            });
+
+            saveAllToStorage();
+            closeBankModal();
+            updateAllViews();
+        }
+
+        function deleteBank(id) {
+            if (confirm("Excluir esta conta bancária?")) {
+                banks = banks.filter(b => b.id !== id);
+                saveAllToStorage();
+                updateAllViews();
+            }
+        }
+
+        // --- REPORTS AND CHARTS ---
+        let categoryChartInstance = null;
+        let statusChartInstance = null;
+
+        function renderReports() {
+            const monthExpenses = getExpensesForSelectedMonth();
+
+            let paidVal = 0;
+            let pendingVal = 0;
+            let overdueVal = 0;
+
+            const categoryTotals = {};
+
+            monthExpenses.forEach(exp => {
+                const amt = parseFloat(exp.amount) || 0;
+                const status = getComputedExpenseStatus(exp);
+
+                if (status === 'paid') paidVal += amt;
+                else if (status === 'overdue') overdueVal += amt;
+                else pendingVal += amt;
+
+                // Category accumulation
+                categoryTotals[exp.category] = (categoryTotals[exp.category] || 0) + amt;
+            });
+
+            document.getElementById('report-total-paid').innerText = formatMoney(paidVal);
+            document.getElementById('report-total-pending').innerText = formatMoney(pendingVal);
+            document.getElementById('report-total-overdue').innerText = formatMoney(overdueVal);
+
+            // Chart 1: Categories Donut Chart
+            const catLabels = Object.keys(categoryTotals);
+            const catData = Object.values(categoryTotals);
+
+            const ctxCategory = document.getElementById('categoryChart').getContext('2d');
+            if (categoryChartInstance) categoryChartInstance.destroy();
+
+            categoryChartInstance = new Chart(ctxCategory, {
+                type: 'doughnut',
+                data: {
+                    labels: catLabels.length ? catLabels : ['Sem Despesas'],
+                    datasets: [{
+                        data: catData.length ? catData : [1],
+                        backgroundColor: [
+                            '#0284c7', '#10b981', '#f59e0b', '#ef4444', 
+                            '#8b5cf6', '#ec4899', '#64748b', '#14b8a6'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+
+            // Chart 2: Status Bar/Pie Chart
+            const ctxStatus = document.getElementById('statusChart').getContext('2d');
+            if (statusChartInstance) statusChartInstance.destroy();
+
+            statusChartInstance = new Chart(ctxStatus, {
+                type: 'pie',
+                data: {
+                    labels: ['Pagas', 'Pendentes', 'Atrasadas'],
+                    datasets: [{
+                        data: [paidVal, pendingVal, overdueVal],
+                        backgroundColor: ['#10b981', '#f59e0b', '#ef4444']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
